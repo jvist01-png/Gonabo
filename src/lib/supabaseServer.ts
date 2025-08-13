@@ -1,16 +1,7 @@
-import { createServerClient } from '@supabase/auth-helpers-nextjs';
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
+
 export function supabaseServer() {
-  const cookieStore = cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        set: () => {},
-        remove: () => {},
-      },
-    }
-  );
+  // Works with auth-helpers-nextjs v0.10.x in the App Router
+  return createServerComponentClient({ cookies });
 }

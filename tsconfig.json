@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["DOM", "ES2020"],
+    "jsx": "preserve",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "incremental": true,
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "noEmit": true
+  },
+  "include": ["next-env.d.ts", "src/**/*", "types/**/*"],
+  "exclude": ["node_modules"]
+}

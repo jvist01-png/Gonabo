@@ -7,12 +7,16 @@ export async function POST(req: Request) {
 
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY! // server-only
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Send an invite email; after they set a password, we’ll send them to /onboarding
-    const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL}/onboarding`;
-    const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, { redirectTo });
+    const base =
+      process.env.NEXT_PUBLIC_SITE_URL ?? 'https://gonabo.vercel.app';
+    const redirectTo = `${base.replace(/\/$/, '')}/onboarding`;
+
+    const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+      redirectTo,
+    });
     if (error) throw error;
 
     return NextResponse.json({ ok: true });

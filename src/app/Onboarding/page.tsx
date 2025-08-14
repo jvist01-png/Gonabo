@@ -19,12 +19,12 @@ export default function OnboardingPage() {
     []
   );
 
-  // Accept invite tokens from URL hash and create session
   useEffect(() => {
     (async () => {
       try {
         setStatus('auth');
 
+        // tokens from #access_token=...&refresh_token=...&type=invite
         const hash = window.location.hash?.replace(/^#/, '');
         const params = new URLSearchParams(hash);
         const access_token = params.get('access_token');
@@ -33,6 +33,7 @@ export default function OnboardingPage() {
         if (access_token && refresh_token) {
           const { error } = await supabase.auth.setSession({ access_token, refresh_token });
           if (error) throw error;
+          // clean hash
           window.history.replaceState({}, '', '/onboarding');
         }
 

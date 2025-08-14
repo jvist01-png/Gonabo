@@ -1,41 +1,4 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { createPagesBrowserClient } from '@supabase/auth-helpers-nextjs';
-
-const ADDRESSES = Array.from({ length: 18 }, (_, i) => 2 + i * 2).map(n => `Tværbanen ${n}`);
-
-export default function Onboarding() {
-  const supabase = createPagesBrowserClient();
-  const router = useRouter();
-  const [sessionOk, setSessionOk] = useState<boolean | null>(null);
-  const [name, setName] = useState('');
-  const [address, setAddress] = useState(ADDRESSES[0]);
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-
-  useEffect(() => {
-    // user lands here after accepting invite + setting password
-    supabase.auth.getUser().then(({ data }) => {
-      setSessionOk(!!data.user);
-      if (!data.user) setMsg('Ingen bruger-session. Log ind og prøv igen.');
-    });
-  }, []);
-
-  async function save(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true); setMsg(null);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setMsg('Ikke logget ind.'); setLoading(false); return; }
-
-    const { error } = await supabase.from('profiles').upsert({
-      id: user.id,
-      full_name: name,
-      avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`,
-      household_id: null // You can later map address->household; for now we store address in the profile row
-    });
-
-    // store address in households + link profile to it (simple first pass):'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -47,23 +10,21 @@ export default function OnboardingPage() {
 
   const [status, setStatus] = useState<'init'|'auth'|'ready'|'saving'|'done'|'error'>('init');
   const [error, setError] = useState<string | null>(null);
-
   const [fullName, setFullName] = useState('');
   const [address, setAddress] = useState('');
 
-  // Build the address dropdown: Tværbanen 2-36 even
+  // Tværbanen 2–36 (even numbers)
   const addresses = useMemo(
     () => Array.from({ length: 18 }, (_, i) => `Tværbanen ${2 + i * 2}`),
     []
   );
 
-  // 1) Accept invite tokens from hash and create a session
+  // Accept invite tokens from URL hash and create session
   useEffect(() => {
-    async function handleInviteHash() {
+    (async () => {
       try {
         setStatus('auth');
 
-        // tokens arrive in the URL hash e.g. #access_token=...&refresh_token=...&type=invite
         const hash = window.location.hash?.replace(/^#/, '');
         const params = new URLSearchParams(hash);
         const access_token = params.get('access_token');
@@ -72,18 +33,12 @@ export default function OnboardingPage() {
         if (access_token && refresh_token) {
           const { error } = await supabase.auth.setSession({ access_token, refresh_token });
           if (error) throw error;
-
-          // clean the hash from the URL (cosmetic)
           window.history.replaceState({}, '', '/onboarding');
         }
 
-        // if already logged in (e.g., returned here), continue
         const { data } = await supabase.auth.getUser();
-        if (!data.user) {
-          throw new Error('Kunne ikke logge ind fra invitationen.');
-        }
+        if (!data.user) throw new Error('Kunne ikke logge ind fra invitationen.');
 
-        // Pre-fill from existing profile if any
         const { data: prof } = await supabase
           .from('profiles')
           .select('full_name, households(address)')
@@ -98,9 +53,7 @@ export default function OnboardingPage() {
         setError(e.message ?? 'Uventet fejl under login fra invitationen.');
         setStatus('error');
       }
-    }
-
-    handleInviteHash();
+    })();
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -111,15 +64,14 @@ export default function OnboardingPage() {
 
       const { data: auth } = await supabase.auth.getUser();
       const user = auth.user;
-      if (!user) throw new Error('Ingen bruger fundet. Prøv at åbne invitationslinket igen.');
+      if (!user) throw new Error('Ingen bruger fundet. Åbn invitationslinket igen.');
 
-      // ensure a household for the address
+      // Ensure household for address
       let { data: hh, error: hhErr } = await supabase
         .from('households')
         .select('id')
         .eq('address', address)
         .maybeSingle();
-
       if (hhErr) throw hhErr;
 
       if (!hh) {
@@ -134,15 +86,9 @@ export default function OnboardingPage() {
 
       const avatar_url = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=16A34A&color=fff`;
 
-      // upsert profile
       const { error: profErr } = await supabase
         .from('profiles')
-        .upsert({
-          id: user.id,
-          full_name: fullName,
-          avatar_url,
-          household_id: hh.id,
-        });
+        .upsert({ id: user.id, full_name: fullName, avatar_url, household_id: hh.id });
       if (profErr) throw profErr;
 
       setStatus('done');
@@ -202,41 +148,6 @@ export default function OnboardingPage() {
           </form>
         )}
       </div>
-    </div>
-  );
-}
-
-    const { data: hh, error: hhe } = await supabase
-      .from('households')
-      .upsert({ address })
-      .select()
-      .single();
-
-    if (!hhe && hh) {
-      await supabase.from('profiles').update({ household_id: hh.id }).eq('id', user.id);
-    }
-
-    if (error || hhe) setMsg(error?.message || hhe?.message || 'Kunne ikke gemme');
-    else router.push('/directory');
-    setLoading(false);
-  }
-
-  if (sessionOk === null) return null;
-
-  return (
-    <div className="max-w-md mx-auto mt-12 p-6 rounded-3xl border bg-white shadow-card">
-      <h1 className="text-xl font-semibold mb-4">Velkommen! Lad os sætte din profil op.</h1>
-      <form onSubmit={save} className="flex flex-col gap-3">
-        <input className="border rounded-xl px-3 py-2" placeholder="Fulde navn"
-               value={name} onChange={e => setName(e.target.value)} required />
-        <select className="border rounded-xl px-3 py-2" value={address} onChange={e => setAddress(e.target.value)}>
-          {ADDRESSES.map(a => <option key={a} value={a}>{a}</option>)}
-        </select>
-        <button className="rounded-xl px-3 py-2 border bg-green-600 text-white disabled:opacity-60" disabled={loading}>
-          {loading ? 'Gemmer…' : 'Fortsæt'}
-        </button>
-        {msg && <div className="text-sm text-red-600">{msg}</div>}
-      </form>
     </div>
   );
 }

@@ -40,14 +40,21 @@ export default function OnboardingPage() {
         const { data } = await supabase.auth.getUser();
         if (!data.user) throw new Error('Kunne ikke logge ind fra invitationen.');
 
-        const { data: prof } = await supabase
-          .from('profiles')
-          .select('full_name, households(address)')
-          .eq('id', data.user.id)
-          .maybeSingle();
+        type ProfileWithHousehold =
+  { full_name: string | null; households: { address?: string }[] | { address?: string } | null };
 
-        if (prof?.full_name) setFullName(prof.full_name);
-        if (prof?.households?.address) setAddress(prof.households.address);
+const { data: prof } = await supabase
+  .from('profiles')
+  .select('full_name, households(address)')
+  .eq('id', data.user.id)
+  .maybeSingle()
+  .returns<ProfileWithHousehold>();
+
+if (prof?.full_name) setFullName(prof.full_name);
+const hh = prof?.households;
+const addr = Array.isArray(hh) ? hh[0]?.address : hh?.address;
+if (addr) setAddress(addr);
+
 
         setStatus('ready');
       } catch (e: any) {

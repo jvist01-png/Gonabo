@@ -13,6 +13,7 @@ export default function InvitePage() {
     setLoading(true); setMsg(null);
 
     // Server: call our API route (uses service role) to send the actual invite
+    const res = await fetch('/api/invite', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ email })

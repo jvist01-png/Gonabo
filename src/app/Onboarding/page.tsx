@@ -8,7 +8,7 @@ export default function OnboardingPage() {
   const supabase = createPagesBrowserClient();
   const router = useRouter();
 
-  const [status, setStatus] = useState<'init'|'auth'|'ready'|'saving'|'done'|'error'>('init');
+  const [status, setStatus] = useState<'init' | 'auth' | 'ready' | 'saving' | 'done' | 'error'>('init');
   const [error, setError] = useState<string | null>(null);
   const [fullName, setFullName] = useState('');
   const [address, setAddress] = useState('');
@@ -40,21 +40,23 @@ export default function OnboardingPage() {
         const { data } = await supabase.auth.getUser();
         if (!data.user) throw new Error('Kunne ikke logge ind fra invitationen.');
 
-        type ProfileWithHousehold =
-  { full_name: string | null; households: { address?: string }[] | { address?: string } | null };
+        // --- Typed result: households may be array or object in TS types
+        type ProfileWithHousehold = {
+          full_name: string | null;
+          households: { address?: string }[] | { address?: string } | null;
+        };
 
-const { data: prof } = await supabase
-  .from('profiles')
-  .select('full_name, households(address)')
-  .eq('id', data.user.id)
-  .maybeSingle()
-  .returns<ProfileWithHousehold>();
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('full_name, households(address)')
+          .eq('id', data.user.id)
+          .maybeSingle()
+          .returns<ProfileWithHousehold>();
 
-if (prof?.full_name) setFullName(prof.full_name);
-const hh = prof?.households;
-const addr = Array.isArray(hh) ? hh[0]?.address : hh?.address;
-if (addr) setAddress(addr);
-
+        if (prof?.full_name) setFullName(prof.full_name);
+        const hh = prof?.households;
+        const addr = Array.isArray(hh) ? hh[0]?.address : hh?.address;
+        if (addr) setAddress(addr);
 
         setStatus('ready');
       } catch (e: any) {
@@ -62,6 +64,7 @@ if (addr) setAddress(addr);
         setStatus('error');
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
